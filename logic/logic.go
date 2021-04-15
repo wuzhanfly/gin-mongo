@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -87,9 +86,11 @@ type PowerRes struct {
 	QualityPowerGrowthStr string `json:"qualityPowerGrowthStr"`
 }
 type BlockReward struct {
-	Data struct {
-		BlockReward float64 `json:"avgBlocksReword"`
-	}`json:"data"`
+	Result struct {
+		Basic struct {
+			BlockReward string `json:"rewards"`
+		} `json:"basic"`
+	} `json:"result"`
 }
 
 type InfoByAddress struct {
@@ -106,7 +107,7 @@ type InfoByAddress struct {
 		TotalRawPowerStr    string  `json:"totalrawpowerstr"`
 		Blocks              int64   `json:"blocks"`
 		WinCount            int64   `json:"wincount"`
-		BlockReward         float64   `json:"blockrewad"`
+		BlockReward         string  `json:"blockrewad"`
 		Owner               string  `json:"owner"`
 		Worker              string  `json:"worker"`
 		Tag                 string  `json:"tag"`
@@ -118,15 +119,15 @@ type InfoByAddress struct {
 			Location string `json:"location"`
 		} `json:"local"`
 		Balance struct {
-			Balance          float64  `json:"balance"`
-			BalanceStr       string `json:"balancestr"`
-			Available        float64  `json:"available"`
-			AvailableStr     string `json:"availablestr"`
-			SectorsPledge    float64  `json:"sectorspledge"`
-			SectorsPledgeStr string `json:"sectorspledgestr"`
-			LockedFunds      float64  `json:"lockedfunds"`
-			LockedFundsStr   string `json:"lockedfundsstr"`
-			FeeDebtStr       string `json:"feedebtstr"`
+			Balance          float64 `json:"balance"`
+			BalanceStr       string  `json:"balancestr"`
+			Available        float64 `json:"available"`
+			AvailableStr     string  `json:"availablestr"`
+			SectorsPledge    float64 `json:"sectorspledge"`
+			SectorsPledgeStr string  `json:"sectorspledgestr"`
+			LockedFunds      float64 `json:"lockedfunds"`
+			LockedFundsStr   string  `json:"lockedfundsstr"`
+			FeeDebtStr       string  `json:"feedebtstr"`
 		} `json:"balance"`
 		Sector struct {
 			SectorSize    int64  `json:"sectorsize"`
@@ -138,39 +139,44 @@ type InfoByAddress struct {
 		} `json:"sectors"`
 	} `json:"data"`
 }
+
 type MiningStatus struct {
-	Data struct{
-		Miner                 string  `json:"miner"`
-		QualityPowerGrowth    int64   `json:"qualitypowergrowth"`
-		QualityPowerGrowthStr string  `json:"qualitypowergrowthstr"`
-		ProvingPower          int64   `json:"provingpower"`
-		ProvingPowerStr       string  `json:"provingpowerstr"`
-		MiningEfficiency      string  `json:"miningefficiency"`
-		MachinesNum           float64 `json:"machinesnum"`
-		Blocks                int64   `json:"blocks"`
-		BlockReward           float64   `json:"blockreward"`
-		BlockRewardStr        string  `json:"blockrewardstr"`
-		TotalBlocks           int64   `json:"totalblocks"`
-		TotalBlockReward      float64   `json:"totalblockreward"`
-		TotalBlockRewardStr   string  `json:"totalblockrewardstr"`
-		BlockRewardPercent    string  `json:"blockrewardpercent"`
-		LuckyValue            string  `json:"luckyvalue"`
-		LuckyValue2           string  `json:"luckyvalue2"`
-		StatsType             string  `json:"statstype"`
+	RawBytePowerGrowth     string  `json:"rawBytePowerGrowth"`
+	QualityAdjPowerGrowth  string  `json:"qualityAdjPowerGrowth"`
+	AwBytePowerDelta       string  `json:"rawBytePowerDelta"`
+	QualityAdjPowerDelta   string  `json:"qualityAdjPowerDelta"`
+	BlocksMined            int64   `json:"blocksMined"`
+	WeightedBlocksMined    int64   `json:"weightedBlocksMined"`
+	TotalRewards           string  `json:"totalRewards"`
+	NetworkTotalRewards    string  `json:"networkTotalRewards"`
+	EquivalentMiners       float64 `json:"equivalentMiners"`
+	RewardPerByte          float64 `json:"rewardPerByte"`
+	WindowedPoStFeePerByte float64 `json:"windowedPoStFeePerByte"`
+	LuckyValue             float64 `json:"luckyValue"`
+	DurationPercentage     int     `json:"durationPercentage"`
+}
+
+type BaseInfo struct {
+	Data struct {
+		TotalPower       float64 `json:"totalPower"`
+		PledgeCollateral float64 `json:"pledgeCollateral"`
+		PowerIn24H       string  `json:"PowerIn24H"`
+		NewlyFilIn24h    float64 `json:"newlyFilIn24h"`
+		BlockRewardIn24h float64 `json:"blockRewardIn24h"`
 	} `json:"data"`
 }
 
-//https://api.filscout.com/api/v1/network/overview/info
-type BaseInfo struct {
-	Data struct{
-		TotalPower float64 `json:"totalPower"`
-		PledgeCollateral float64 `json:"pledgeCollateral"`
-		PowerIn24H string `json:"PowerIn24H"`
-		NewlyFilIn24h float64 `json:"newlyFilIn24h"`
-		BlockRewardIn24h  float64 `json:"blockRewardIn24h"`
-		
-	} `json:"data"`
+//	//	"id":1,
+//	//	"jsonrpc":"2.0",
+//	//	"method":"filscan.ActorById",
+//	//	"params":["f0469055"]
+type Body struct {
+	ID      int      `json:"id"`
+	JsonRpc string   `json:"jsonrpc"`
+	Method  string   `json:"method"`
+	Params  []string `json:"params"`
 }
+
 func MinerByPeerId(minerId string) ([]block, error) {
 	MinerUrl := fmt.Sprintf("https://filfox.info/api/v1/address/%s/blocks?pageSize=30&page=0", minerId)
 	Database := new(data)
@@ -238,73 +244,76 @@ func GetPowerInByAddress(minerId string) ([]PowerRes, error) {
 }
 
 func GetInfoByAddress(address string) (*InfoByAddress, error) {
+	var balance = []string{address}
 
 	Database := new(InfoByAddress)
 	BlockRe := new(BlockReward)
-	mURL := "https://api.filscout.com/api/v1/network/overview/info"
+	mURL := "https://api.filscan.io:8700/rpc/v1"
+	S := Body{
+		ID:      1,
+		JsonRpc: "2.0",
+		Method:  "filscan.ActorById",
+		Params:  balance,
+	}
+	data, err := json.Marshal(&S)
+	if err != nil {
+		return Database, err
+	}
+	req, err := http.NewRequest("POST", mURL, bytes.NewBuffer(data))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
 	url := fmt.Sprintf("https://api.filscout.com/api/v1/miners/%s/info", address)
 	result, err := Post(url, "", "application/json; charset=utf-8")
 	if err != nil {
 		return Database, err
 	}
-	res,err := Get1(mURL)
-	if err != nil {
-		return Database, err
-	}
-	json.Unmarshal(res,&BlockRe)
-	json.Unmarshal(result, &Database)
-	res64,err := strconv.ParseFloat(strconv.FormatInt(Database.Data.WinCount, 10), 64)
-	if err != nil {
-		return Database, err
-	}
-	Database.Data.BlockReward = BlockRe.Data.BlockReward * res64
+	_ = json.Unmarshal(body, &BlockRe)
+	_ = json.Unmarshal(result, &Database)
+	Database.Data.BlockReward = BlockRe.Result.Basic.BlockReward
 	return Database, err
 }
 
-func MiningStats(address,type_status string) (*MiningStatus,error){
+func MiningStats(address, type_status string) (*MiningStatus, error) {
 	Database := new(MiningStatus)
-	values := map[string]string{"statsType": type_status}
-	jsonValue, _ := json.Marshal(values)
-	Murl := fmt.Sprintf("https://api.filscout.com/api/v1/miners/%s/miningstats", address)
-	resp, err := http.Post(Murl, "application/json", bytes.NewBuffer(jsonValue))
-
+	Murl := fmt.Sprintf("https://filfox.info/api/v1/address/%s/mining-stats?duration=%s", address,type_status)
+	body,err := Get1(Murl)
 	if err != nil {
-		return  Database ,err
+		return Database, err
 	}
-	   defer resp.Body.Close()
-	   body, err := ioutil.ReadAll(resp.Body)
-	   if err != nil {
-
-		   return  Database ,err
-	   }
-		json.Unmarshal(body, &Database)
-	   return Database,err
-
+	json.Unmarshal(body, &Database)
+	return Database, err
 }
 
-func BaseInfoFun() (*BaseInfo,error) {
-		MinerUrl := fmt.Sprintf("https://api.filscout.com/api/v1/network/overview/info")
-		Database := new(BaseInfo)
-		params := url.Values{}
-		Url, err := url.Parse(MinerUrl)
+func BaseInfoFun() (*BaseInfo, error) {
+	MinerUrl := fmt.Sprintf("https://api.filscout.com/api/v1/network/overview/info")
+	Database := new(BaseInfo)
+	params := url.Values{}
+	Url, err := url.Parse(MinerUrl)
+	if err != nil {
+		return nil, err
+	}
+	Url.RawQuery = params.Encode()
+	urlPath := Url.String()
+	resp, err := http.Get(urlPath)
+	if err != nil {
 		if err != nil {
 			return nil, err
 		}
-		Url.RawQuery = params.Encode()
-		urlPath := Url.String()
-		resp, err := http.Get(urlPath)
-		if err != nil {
-			if err != nil {
-				return nil, err
-			}
-		}
-		defer resp.Body.Close()
+	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal(body, &Database)
-		return  Database ,err
+	return Database, err
 }
 
 func GetPowerIn() ([]Russ, error) {
