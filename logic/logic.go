@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -84,9 +86,13 @@ type PowerRes struct {
 	HeightTimeStr         string `json:"heightTimeStr"`
 	QualityPowerGrowthStr string `json:"qualityPowerGrowthStr"`
 }
+type BlockReward struct {
+	Data struct {
+		BlockReward float64 `json:"avgBlocksReword"`
+	}`json:"data"`
+}
 
 type InfoByAddress struct {
-	C    string `json:"code"`
 	Data struct {
 		Miner               string  `json:"miner"`
 		QualityPower        int64   `json:"qualitypower"`
@@ -100,8 +106,7 @@ type InfoByAddress struct {
 		TotalRawPowerStr    string  `json:"totalrawpowerstr"`
 		Blocks              int64   `json:"blocks"`
 		WinCount            int64   `json:"wincount"`
-		BlockReward         int64   `json:"blockreward"`
-		BlockRewardStr      string  `json:"blockrewardstr"`
+		BlockReward         float64   `json:"blockrewad"`
 		Owner               string  `json:"owner"`
 		Worker              string  `json:"worker"`
 		Tag                 string  `json:"tag"`
@@ -233,15 +238,27 @@ func GetPowerInByAddress(minerId string) ([]PowerRes, error) {
 }
 
 func GetInfoByAddress(address string) (*InfoByAddress, error) {
+
 	Database := new(InfoByAddress)
+	BlockRe := new(BlockReward)
+	mURL := "https://api.filscout.com/api/v1/network/overview/info"
 	url := fmt.Sprintf("https://api.filscout.com/api/v1/miners/%s/info", address)
 	result, err := Post(url, "", "application/json; charset=utf-8")
 	if err != nil {
 		return Database, err
 	}
+	res,err := Get1(mURL)
+	if err != nil {
+		return Database, err
+	}
+	json.Unmarshal(res,&BlockRe)
 	json.Unmarshal(result, &Database)
+	res64,err := strconv.ParseFloat(strconv.FormatInt(Database.Data.WinCount, 10), 64)
+	if err != nil {
+		return Database, err
+	}
+	Database.Data.BlockReward = BlockRe.Data.BlockReward * res64
 	return Database, err
-
 }
 
 func MiningStats(address,type_status string) (*MiningStatus,error){
@@ -351,3 +368,29 @@ func Post(url string, data string, contentType string) ([]byte, error) {
 	result, _ := ioutil.ReadAll(resp.Body)
 	return result, err
 }
+
+//发送GET请求
+//url:请求地址
+//response:请求返回的内容
+func Get1(url string) ([]byte, error) {
+	client := http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	defer resp.Body.Close()
+	if err != nil {
+
+		return []byte(""), err
+	}
+	var buffer [512]byte
+	result := bytes.NewBuffer(nil)
+	for {
+		n, err := resp.Body.Read(buffer[0:])
+		result.Write(buffer[0:n])
+		if err != nil && err == io.EOF {
+			break
+		} else if err != nil {
+			return []byte(""), err
+		}
+	}
+	return result.Bytes(), nil
+}
+
