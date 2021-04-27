@@ -163,6 +163,8 @@ type BaseInfo struct {
 		PowerIn24H       string  `json:"PowerIn24H"`
 		NewlyFilIn24h    float64 `json:"newlyFilIn24h"`
 		BlockRewardIn24h float64 `json:"blockRewardIn24h"`
+		CurrentPledgeCollateral float64 `json:"currentPledgeCollateral"`
+		NewlyPowerCostIn32GB float64 `json:"newlyPowerCostIn32GB"`
 	} `json:"data"`
 }
 
@@ -313,6 +315,7 @@ func BaseInfoFun() (*BaseInfo, error) {
 		return nil, err
 	}
 	json.Unmarshal(body, &Database)
+	Database.Data.NewlyPowerCostIn32GB = Database.Data.NewlyPowerCostIn32GB + 0.15
 	return Database, err
 }
 
