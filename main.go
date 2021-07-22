@@ -1,8 +1,8 @@
 package main
 
 import (
-	"gin-mongo-backend/app"
 	"flag"
+	"gin-mongo-backend/app"
 )
 
 func main() {

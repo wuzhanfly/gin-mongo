@@ -37,7 +37,7 @@ func Run(configPath string) {
 	}
 
 	// 初始化各种服务
-	initService(config)
+	//initService(config)
 
 	// 启动服务器
 	app := controllers.NewApp()

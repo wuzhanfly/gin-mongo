@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -140,6 +141,14 @@ type InfoByAddress struct {
 	} `json:"data"`
 }
 
+type base struct {
+	Data struct {
+		AddPowerIn32g               string  `json:"add_power_in_32g"`
+	} `json:"data"`
+}
+
+
+
 type MiningStatus struct {
 	RawBytePowerGrowth     string  `json:"rawBytePowerGrowth"`
 	QualityAdjPowerGrowth  string  `json:"qualityAdjPowerGrowth"`
@@ -168,6 +177,13 @@ type BaseInfo struct {
 	} `json:"data"`
 }
 
+type Base struct {
+	Result struct {
+		Data struct {
+			NewlyPowerCostIn32GB string `json:"add_power_in_32g"`
+		} `json:"data"`
+	} `json:"result"`
+}
 //	//	"id":1,
 //	//	"jsonrpc":"2.0",
 //	//	"method":"filscan.ActorById",
@@ -240,13 +256,11 @@ func GetPowerInByAddress(minerId string) ([]PowerRes, error) {
 		json.NewEncoder(os.Stdout).Encode(&S)
 		res = append(res, S)
 	}
-
-	fmt.Println(len(Database.Result.Data))
 	return res, err
 }
 
 func GetInfoByAddress(address string) (*InfoByAddress, error) {
-	var balance = []string{address}
+	var addre = []string{address}
 
 	Database := new(InfoByAddress)
 	BlockRe := new(BlockReward)
@@ -255,7 +269,7 @@ func GetInfoByAddress(address string) (*InfoByAddress, error) {
 		ID:      1,
 		JsonRpc: "2.0",
 		Method:  "filscan.ActorById",
-		Params:  balance,
+		Params:  addre,
 	}
 	data, err := json.Marshal(&S)
 	if err != nil {
@@ -270,7 +284,6 @@ func GetInfoByAddress(address string) (*InfoByAddress, error) {
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
 	url := fmt.Sprintf("https://api.filscout.com/api/v1/miners/%s/info", address)
 	result, err := Post(url, "", "application/json; charset=utf-8")
 	if err != nil {
@@ -295,7 +308,14 @@ func MiningStats(address, type_status string) (*MiningStatus, error) {
 
 func BaseInfoFun() (*BaseInfo, error) {
 	MinerUrl := fmt.Sprintf("https://api.filscout.com/api/v1/network/overview/info")
+	//id: 1
+	//jsonrpc: "2.0"
+	//method: "filscan.StatChainInfo"
+	//params: []
+	//https://www.atpool.com/api/explorer/get_overview
+
 	Database := new(BaseInfo)
+	Base := new(Base)
 	params := url.Values{}
 	Url, err := url.Parse(MinerUrl)
 	if err != nil {
@@ -315,7 +335,33 @@ func BaseInfoFun() (*BaseInfo, error) {
 		return nil, err
 	}
 	json.Unmarshal(body, &Database)
-	Database.Data.NewlyPowerCostIn32GB = Database.Data.NewlyPowerCostIn32GB + 0.15
+	var addre = []string{}
+	mURL := "https://api.filscan.io:8700/rpc/v1"
+	S := Body{
+		ID:      1,
+		JsonRpc: "2.0",
+		Method:   "filscan.StatChainInfo",
+		Params:  addre,
+	}
+	data, err := json.Marshal(&S)
+	if err != nil {
+		return Database, err
+	}
+	req, err := http.NewRequest("POST", mURL, bytes.NewBuffer(data))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp1, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body1, _ := ioutil.ReadAll(resp1.Body)
+	_ = json.Unmarshal(body1, &Base)
+	score, _ := strconv.ParseFloat(Base.Result.Data.NewlyPowerCostIn32GB, 64)
+	Database.Data.NewlyPowerCostIn32GB = score
+
+
+
 	return Database, err
 }
 
@@ -361,7 +407,7 @@ func GetGas(s string) ([]Gas, error) {
 	return res, err
 }
 
-//发送POST请求
+// Post 发送POST请求
 //url:请求地址		data:POST请求提交的数据		contentType:请求体格式，如：application/json
 //content:请求返回的内容
 func Post(url string, data string, contentType string) ([]byte, error) {
@@ -381,7 +427,7 @@ func Post(url string, data string, contentType string) ([]byte, error) {
 	return result, err
 }
 
-//发送GET请求
+// Get1 发送GET请求
 //url:请求地址
 //response:请求返回的内容
 func Get1(url string) ([]byte, error) {
