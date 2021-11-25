@@ -164,7 +164,7 @@ type MiningStatus struct {
 	LuckyValue             float64 `json:"luckyValue"`
 	DurationPercentage     int     `json:"durationPercentage"`
 }
-
+//gas_in_64g: "0.00014725490533037029"
 type BaseInfo struct {
 	Data struct {
 		TotalPower       float64 `json:"totalPower"`
@@ -175,6 +175,7 @@ type BaseInfo struct {
 		CurrentPledgeCollateral float64 `json:"currentPledgeCollateral"`
 		NewlyPowerCostIn32GB float64 `json:"newlyPowerCostIn32GB"`
 		GasIn32G string `json:"gasIn32g"`
+		GasIn64G string `json:"gasIn64g"`
 	} `json:"data"`
 }
 
@@ -183,6 +184,7 @@ type Base struct {
 		Data struct {
 			NewlyPowerCostIn32GB string `json:"add_power_in_32g"`
 			GasIn32G string `json:"gas_in_32g"`
+			GasIn64G string `json:"gas_in_64g"`
 		} `json:"data"`
 	} `json:"result"`
 }
@@ -357,6 +359,7 @@ func BaseInfoFun() (*BaseInfo, error) {
 	fmt.Println(Base.Result.Data.GasIn32G)
 	Database.Data.NewlyPowerCostIn32GB = score
 	Database.Data.GasIn32G = Base.Result.Data.GasIn32G
+	Database.Data.GasIn64G = Base.Result.Data.GasIn64G
 	return Database, err
 }
 
