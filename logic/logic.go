@@ -174,6 +174,7 @@ type BaseInfo struct {
 		BlockRewardIn24h float64 `json:"blockRewardIn24h"`
 		CurrentPledgeCollateral float64 `json:"currentPledgeCollateral"`
 		NewlyPowerCostIn32GB float64 `json:"newlyPowerCostIn32GB"`
+		GasIn32G string `json:"gasIn32g"`
 	} `json:"data"`
 }
 
@@ -181,6 +182,7 @@ type Base struct {
 	Result struct {
 		Data struct {
 			NewlyPowerCostIn32GB string `json:"add_power_in_32g"`
+			GasIn32G string `json:"gas_in_32g"`
 		} `json:"data"`
 	} `json:"result"`
 }
@@ -308,12 +310,6 @@ func MiningStats(address, type_status string) (*MiningStatus, error) {
 
 func BaseInfoFun() (*BaseInfo, error) {
 	MinerUrl := fmt.Sprintf("https://api.filscout.com/api/v1/network/overview/info")
-	//id: 1
-	//jsonrpc: "2.0"
-	//method: "filscan.StatChainInfo"
-	//params: []
-	//https://www.atpool.com/api/explorer/get_overview
-
 	Database := new(BaseInfo)
 	Base := new(Base)
 	params := url.Values{}
@@ -335,7 +331,7 @@ func BaseInfoFun() (*BaseInfo, error) {
 		return nil, err
 	}
 	json.Unmarshal(body, &Database)
-	var addre = []string{}
+	var addre []string
 	mURL := "https://api.filscan.io:8700/rpc/v1"
 	S := Body{
 		ID:      1,
@@ -358,10 +354,9 @@ func BaseInfoFun() (*BaseInfo, error) {
 	body1, _ := ioutil.ReadAll(resp1.Body)
 	_ = json.Unmarshal(body1, &Base)
 	score, _ := strconv.ParseFloat(Base.Result.Data.NewlyPowerCostIn32GB, 64)
+	fmt.Println(Base.Result.Data.GasIn32G)
 	Database.Data.NewlyPowerCostIn32GB = score
-
-
-
+	Database.Data.GasIn32G = Base.Result.Data.GasIn32G
 	return Database, err
 }
 
