@@ -3,7 +3,6 @@ package app
 import (
 	"gin-mongo-backend/app/api"
 	"gin-mongo-backend/app/controllers"
-	"gin-mongo-backend/models"
 	"gin-mongo-backend/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -11,15 +10,15 @@ import (
 	"os"
 )
 
-func initService(config utils.Config)  {
-	// 初始化数据库
-	if err := models.InitDB(&config.DB); err != nil {
-		panic(err)
-	}
-
-	// 初始化 JWT
-	controllers.SetJWTSignKey(config.HTTP)
-}
+//func initService(config utils.Config)  {
+//	// 初始化数据库
+//	if err := models.InitDB(&config.DB); err != nil {
+//		panic(err)
+//	}
+//
+//	// 初始化 JWT
+//	controllers.SetJWTSignKey(config.HTTP)
+//}
 
 func Run(configPath string) {
 	// 初始化日志
@@ -43,7 +42,6 @@ func Run(configPath string) {
 	app := controllers.NewApp()
 
 	api.RunHTTPServer(app)
-
 
 	if err := app.Run(":" + config.HTTP.Port); err != nil {
 		panic(err)

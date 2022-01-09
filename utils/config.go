@@ -11,8 +11,8 @@ import (
 type Config struct {
 	Env  string     `yaml:"env"`  // 开发模式
 	HTTP HTTPConfig `yaml:"http"` // HTTP 配置
-	DB   DBConfig   `yaml:"db"`   // 数据库配置
-	APIs APIs       `yaml:"apis"` //接口地址配置
+	//DB   DBConfig   `yaml:"db"`   // 数据库配置
+	APIs APIs `yaml:"apis"` //接口地址配置
 }
 
 // HTTPConfig 服务器配置

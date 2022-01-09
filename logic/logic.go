@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -86,11 +87,39 @@ type PowerRes struct {
 	HeightTimeStr         string `json:"heightTimeStr"`
 	QualityPowerGrowthStr string `json:"qualityPowerGrowthStr"`
 }
+
 type BlockReward struct {
 	Result struct {
 		Basic struct {
 			BlockReward string `json:"rewards"`
+			Miner       string `json:"actor"`
+			IP          string `json:"ip"`
+			Location_cn string `json:"location_cn"`
+			PeerId      string `json:"peer_id"`
+			Blocks      int64  `json:"block_count"`
+			WinCount    int64  `json:"sigma_win_count"`
+			BalanceStr  string `json:"balance"`
 		} `json:"basic"`
+		Extra struct {
+			QualityPower      string `json:"power"`
+			RawPower          string `json:"quality_adjust_power"`
+			TotalQualityPower string `json:"total_quality_adjust_power"`
+			TotalRawPower     string `json:"total_power"`
+
+			Address struct {
+				Owner  string `json:"owner_address"`
+				Worker string `json:"worker_address"`
+			} `json:"addresses"`
+			PowerRank        int64  `json:"rank"`
+			AvailableStr     string `json:"available_balance"`
+			SectorsPledgeStr string `json:"init_pledge"`
+			LockedFundsStr   string `json:"locked_funds"`
+			SectorSize       int64  `json:"sector_size"`
+			SectorCount      int64  `json:"all_sector_count"`
+			ActiveCount      int64  `json:"act_sector_count"`
+			FaultCount       int64  `json:"fault_sector_count"`
+			RecoveryCount    int64  `json:"recover_sector_count"`
+		} `json:"extra"`
 	} `json:"result"`
 }
 
@@ -102,9 +131,9 @@ type InfoByAddress struct {
 		QualityPowerPercent float64 `json:"qualitypowerpercent"`
 		RawPower            int64   `json:"rawpower"`
 		RawPowerStr         string  `json:"rawpowerstr"`
-		RawPowerPercent     string  `json:"rawpowerpercent"`
-		TotalQualityPower   int64   `json:"totalqualitypower"`
-		TotalRawPower       int64   `json:"totalrawpower"`
+		RawPowerPercent     float64 `json:"rawpowerpercent"`
+		TotalQualityPower   string  `json:"totalqualitypower"`
+		TotalRawPower       string  `json:"totalrawpower"`
 		TotalRawPowerStr    string  `json:"totalrawpowerstr"`
 		Blocks              int64   `json:"blocks"`
 		WinCount            int64   `json:"wincount"`
@@ -143,11 +172,9 @@ type InfoByAddress struct {
 
 type base struct {
 	Data struct {
-		AddPowerIn32g               string  `json:"add_power_in_32g"`
+		AddPowerIn32g string `json:"add_power_in_32g"`
 	} `json:"data"`
 }
-
-
 
 type MiningStatus struct {
 	RawBytePowerGrowth     string  `json:"rawBytePowerGrowth"`
@@ -164,30 +191,47 @@ type MiningStatus struct {
 	LuckyValue             float64 `json:"luckyValue"`
 	DurationPercentage     int     `json:"durationPercentage"`
 }
-//gas_in_64g: "0.00014725490533037029"
+
+// BaseInfo gas_in_64g: "0.00014725490533037029"
 type BaseInfo struct {
 	Data struct {
-		TotalPower       float64 `json:"totalPower"`
-		PledgeCollateral float64 `json:"pledgeCollateral"`
-		PowerIn24H       string  `json:"PowerIn24H"`
-		NewlyFilIn24h    float64 `json:"newlyFilIn24h"`
-		BlockRewardIn24h float64 `json:"blockRewardIn24h"`
-		CurrentPledgeCollateral float64 `json:"currentPledgeCollateral"`
-		NewlyPowerCostIn32GB float64 `json:"newlyPowerCostIn32GB"`
-		GasIn32G string `json:"gasIn32g"`
-		GasIn64G string `json:"gasIn64g"`
+		TotalPower              float64 `json:"totalPower"`
+		PledgeCollateral        float64 `json:"pledgeCollateral"`
+		PowerIn24H              string  `json:"PowerIn24H"`
+		NewlyFilIn24h           float64 `json:"newlyFilIn24h"`
+		BlockRewardIn24h        float64 `json:"blockRewardIn24h"`
+		CurrentPledgeCollateral string  `json:"currentPledgeCollateral"`
+		NewlyPowerCostIn32GB    float64 `json:"newlyPowerCostIn32GB"`
+		GasIn32G                string  `json:"gasIn32g"`
+		GasIn64G                string  `json:"gasIn64g"`
 	} `json:"data"`
 }
 
+// Base TotalPower float64 `json:"totalPower"`// 总算力
+//
+//PledgeCollateral float64 `json:"pledgeCollateral"`//质押
+//
+//PowerIn24H string `json:"PowerIn24H"`//24H新增有效存储
+//
+//NewlyFilIn24h float64 `json:"newlyFilIn24h"`//24h产出量
+//
+//BlockRewardIn24h  float64 `json:"blockRewardIn24h"`//24h平均挖矿收益
 type Base struct {
 	Result struct {
 		Data struct {
-			NewlyPowerCostIn32GB string `json:"add_power_in_32g"`
-			GasIn32G string `json:"gas_in_32g"`
-			GasIn64G string `json:"gas_in_64g"`
+			NewlyPowerCostIn32GB    string  `json:"add_power_in_32g"`
+			GasIn32G                string  `json:"gas_in_32g"`
+			GasIn64G                string  `json:"gas_in_64g"`
+			TotalPower              string  `json:"total_quality_power"`  // 总算力
+			PledgeCollateral        float64 `json:"pledgeCollateral"`     //FIL质押量
+			PowerIn24H              string  `json:"power_increase_24h"`   //24H新增有效存储
+			NewlyFilIn24h           string  `json:"fil_per_tera"`         //24h产出量
+			BlockRewardIn24h        string  `json:"rewards_increase_24h"` //24h平均挖矿收益 rewards_increase_24h
+			CurrentPledgeCollateral string  `json:"pledge_per_tera"`
 		} `json:"data"`
 	} `json:"result"`
 }
+
 //	//	"id":1,
 //	//	"jsonrpc":"2.0",
 //	//	"method":"filscan.ActorById",
@@ -265,14 +309,13 @@ func GetPowerInByAddress(minerId string) ([]PowerRes, error) {
 
 func GetInfoByAddress(address string) (*InfoByAddress, error) {
 	var addre = []string{address}
-
 	Database := new(InfoByAddress)
 	BlockRe := new(BlockReward)
 	mURL := "https://api.filscan.io:8700/rpc/v1"
 	S := Body{
 		ID:      1,
 		JsonRpc: "2.0",
-		Method:  "filscan.ActorById",
+		Method:  "filscan.FilscanActorById",
 		Params:  addre,
 	}
 	data, err := json.Marshal(&S)
@@ -288,21 +331,61 @@ func GetInfoByAddress(address string) (*InfoByAddress, error) {
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	url := fmt.Sprintf("https://api.filscout.com/api/v1/miners/%s/info", address)
-	result, err := Post(url, "", "application/json; charset=utf-8")
-	if err != nil {
-		return Database, err
-	}
+
 	_ = json.Unmarshal(body, &BlockRe)
-	_ = json.Unmarshal(result, &Database)
-	Database.Data.BlockReward = BlockRe.Result.Basic.BlockReward
+	Database.Data.BlockReward = BlockRe.Result.Basic.BlockReward + " " + "FIL"
+	Database.Data.Blocks = BlockRe.Result.Basic.Blocks
+	Database.Data.Miner = BlockRe.Result.Basic.Miner
+	Database.Data.PeerId = BlockRe.Result.Basic.PeerId
+	Database.Data.Owner = BlockRe.Result.Extra.Address.Owner
+	Database.Data.Worker = BlockRe.Result.Extra.Address.Worker
+	Database.Data.WinCount = BlockRe.Result.Basic.WinCount
+	Database.Data.PowerRank = BlockRe.Result.Extra.PowerRank
+	AvailableStr, _ := strconv.ParseFloat(BlockRe.Result.Extra.AvailableStr, 64)
+
+	Database.Data.Balance.Available = AvailableStr
+	Database.Data.Balance.AvailableStr = BlockRe.Result.Extra.AvailableStr + " " + "FIL"
+	SectorsPledgeStr, _ := strconv.ParseFloat(BlockRe.Result.Extra.SectorsPledgeStr, 64)
+	Database.Data.Balance.SectorsPledgeStr = BlockRe.Result.Extra.SectorsPledgeStr + " " + "FIL"
+	Database.Data.Balance.SectorsPledge = SectorsPledgeStr
+	LockedFundsStr, _ := strconv.ParseFloat(BlockRe.Result.Extra.LockedFundsStr, 64)
+	Database.Data.Balance.LockedFundsStr = BlockRe.Result.Extra.LockedFundsStr + " " + "FIL"
+	Database.Data.Balance.LockedFunds = LockedFundsStr
+	Database.Data.Balance.BalanceStr = BlockRe.Result.Basic.BalanceStr + " " + "FIL"
+	BalanceStr, _ := strconv.ParseFloat(BlockRe.Result.Basic.BalanceStr, 64)
+	Database.Data.Balance.Balance = BalanceStr
+
+	Database.Data.Sector.SectorSize = BlockRe.Result.Extra.SectorSize
+	Database.Data.RawPowerStr = formatFileSize(BlockRe.Result.Extra.RawPower)
+	Database.Data.RawPower = change(BlockRe.Result.Extra.RawPower)
+	Database.Data.QualityPowerStr = formatFileSize(BlockRe.Result.Extra.QualityPower)
+	Database.Data.QualityPower = change(BlockRe.Result.Extra.QualityPower)
+	Database.Data.TotalQualityPower = BlockRe.Result.Extra.TotalQualityPower
+	Database.Data.TotalRawPower = BlockRe.Result.Extra.TotalRawPower
+	Database.Data.Sector.SectorSizeStr = formatFileSize(strconv.FormatInt(BlockRe.Result.Extra.SectorSize, 10))
+	Database.Data.Sector.SectorCount = BlockRe.Result.Extra.SectorCount
+	Database.Data.Sector.ActiveCount = BlockRe.Result.Extra.ActiveCount
+	Database.Data.Sector.FaultCount = BlockRe.Result.Extra.FaultCount
+	Database.Data.Sector.RecoveryCount = BlockRe.Result.Extra.RecoveryCount
+	TotalRawPowerstr, err := strconv.ParseFloat(BlockRe.Result.Extra.TotalRawPower, 64)
+
+	if err != nil {
+		return nil, err
+	}
+	QualityPower, _ := strconv.ParseFloat(BlockRe.Result.Extra.QualityPower, 64)
+
+	Database.Data.TotalRawPowerStr = fmt.Sprintf("%.3f EB", TotalRawPowerstr/float64(1024*1024*1024*1024*1024*1024))
+	Database.Data.QualityPowerPercent = QualityPower / TotalRawPowerstr
+	RawPower, _ := strconv.ParseFloat(BlockRe.Result.Extra.RawPower, 64)
+
+	Database.Data.RawPowerPercent = RawPower / TotalRawPowerstr
 	return Database, err
 }
 
-func MiningStats(address, type_status string) (*MiningStatus, error) {
+func MiningStats(address, typeStatus string) (*MiningStatus, error) {
 	Database := new(MiningStatus)
-	Murl := fmt.Sprintf("https://filfox.info/api/v1/address/%s/mining-stats?duration=%s", address,type_status)
-	body,err := Get1(Murl)
+	Murl := fmt.Sprintf("https://filfox.info/api/v1/address/%s/mining-stats?duration=%s", address, typeStatus)
+	body, err := Get1(Murl)
 	if err != nil {
 		return Database, err
 	}
@@ -311,34 +394,14 @@ func MiningStats(address, type_status string) (*MiningStatus, error) {
 }
 
 func BaseInfoFun() (*BaseInfo, error) {
-	MinerUrl := fmt.Sprintf("https://api.filscout.com/api/v1/network/overview/info")
 	Database := new(BaseInfo)
 	Base := new(Base)
-	params := url.Values{}
-	Url, err := url.Parse(MinerUrl)
-	if err != nil {
-		return nil, err
-	}
-	Url.RawQuery = params.Encode()
-	urlPath := Url.String()
-	resp, err := http.Get(urlPath)
-	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	json.Unmarshal(body, &Database)
 	var addre []string
 	mURL := "https://api.filscan.io:8700/rpc/v1"
 	S := Body{
 		ID:      1,
 		JsonRpc: "2.0",
-		Method:   "filscan.StatChainInfo",
+		Method:  "filscan.StatChainInfo",
 		Params:  addre,
 	}
 	data, err := json.Marshal(&S)
@@ -352,14 +415,35 @@ func BaseInfoFun() (*BaseInfo, error) {
 	if err != nil {
 		panic(err)
 	}
-	defer resp.Body.Close()
+	defer resp1.Body.Close()
 	body1, _ := ioutil.ReadAll(resp1.Body)
 	_ = json.Unmarshal(body1, &Base)
 	score, _ := strconv.ParseFloat(Base.Result.Data.NewlyPowerCostIn32GB, 64)
-	fmt.Println(Base.Result.Data.GasIn32G)
 	Database.Data.NewlyPowerCostIn32GB = score
 	Database.Data.GasIn32G = Base.Result.Data.GasIn32G
 	Database.Data.GasIn64G = Base.Result.Data.GasIn64G
+	float, err := strconv.ParseFloat(Base.Result.Data.TotalPower, 64)
+	if err != nil {
+		return nil, err
+	}
+	Database.Data.TotalPower = float / 1024 / 1024 / 1024 / 1024 / 1024 / 1024
+	PowerIn24H, err := strconv.ParseFloat(Base.Result.Data.PowerIn24H, 64)
+	if err != nil {
+		return nil, err
+	}
+	f := PowerIn24H / 1024 / 1024 / 1024 / 1024 / 1024
+
+	Database.Data.PowerIn24H = fmt.Sprintf("%.5f", f)
+	BlockRewardIn24h, err := strconv.ParseFloat(Base.Result.Data.BlockRewardIn24h, 64)
+	if err != nil {
+		return nil, err
+	}
+	Database.Data.BlockRewardIn24h = BlockRewardIn24h
+	v2, _ := strconv.ParseFloat(Base.Result.Data.NewlyFilIn24h, 64)
+	Database.Data.NewlyFilIn24h = v2
+
+	Database.Data.CurrentPledgeCollateral = Base.Result.Data.CurrentPledgeCollateral
+	Database.Data.PledgeCollateral = 128345792
 	return Database, err
 }
 
@@ -449,4 +533,37 @@ func Get1(url string) ([]byte, error) {
 	}
 	return result.Bytes(), nil
 }
+func change(i string) int64 {
+	res, err := strconv.ParseInt(i, 10, 64)
+	if err != nil {
+		log.Fatalf("to change is failed:%s", err)
+		return 0
 
+	}
+	return res
+}
+
+// 字节的单位转换 保留3位小数
+func formatFileSize(fileSize string) (size string) {
+	res, err := strconv.ParseUint(fileSize, 10, 64)
+	if err != nil {
+		log.Fatalf("to change is failed:%s", err)
+		return "0"
+	}
+	if res < 1024 {
+		return strconv.FormatUint(res, 10) + "B"
+		return fmt.Sprintf("%.3f B", float64(res)/float64(1))
+	} else if res < (1024 * 1024) {
+		return fmt.Sprintf("%.3f KB", float64(res)/float64(1024))
+	} else if res < (1024 * 1024 * 1024) {
+		return fmt.Sprintf("%.3f MB", float64(res)/float64(1024*1024))
+	} else if res < (1024 * 1024 * 1024 * 1024) {
+		return fmt.Sprintf("%.3f GB", float64(res)/float64(1024*1024*1024))
+	} else if res < (1024 * 1024 * 1024 * 1024 * 1024) {
+		return fmt.Sprintf("%.3f TB", float64(res)/float64(1024*1024*1024*1024))
+	} else if res < (1024 * 1024 * 1024 * 1024 * 1024 * 1024) {
+		return fmt.Sprintf("%.3f PB", float64(res)/float64(1024*1024*1024*1024*1024))
+	} else {
+		return fmt.Sprintf("%.3f EB", float64(res)/float64(1024*1024*1024*1024*1024*1024))
+	}
+}

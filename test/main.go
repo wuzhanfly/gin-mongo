@@ -15,13 +15,13 @@ type S struct {
 
 func main() {
 	Database := new(S)
-	res := Post_1("https://api.fgas.io/api/v1/getFil",`{"type": "32G"}`,"application/json")
+	res := Post_1("https://api.fgas.io/api/v1/getFil", `{"type": "32G"}`, "application/json")
 	json.Unmarshal(res, &Database)
-	fmt.Println(11,Database.Id)
-	
+	fmt.Println(11, Database.Id)
+
 }
 
-//url:请求地址		data:POST请求提交的数据		contentType:请求体格式，如：application/json
+// Post_1 url:请求地址		data:POST请求提交的数据		contentType:请求体格式，如：application/json
 //content:请求返回的内容
 func Post_1(url string, data string, contentType string) []byte {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(data)))
@@ -41,8 +41,3 @@ func Post_1(url string, data string, contentType string) []byte {
 	fmt.Println(string(result))
 	return result
 }
-
-
-
-
-
